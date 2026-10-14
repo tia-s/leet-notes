@@ -14,11 +14,15 @@
     "astro": "astro"
   },
   "dependencies": {
+    "@astrojs/markdown-remark": "^7.3.2",
     "@astrojs/react": "^5.0.7",
     "@tailwindcss/vite": "^4.3.0",
     "astro": "^6.4.3",
+    "katex": "^0.19.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "rehype-katex": "^7.0.1",
+    "remark-math": "^6.0.0",
     "tailwindcss": "^4.3.0"
   },
   "devDependencies": {
