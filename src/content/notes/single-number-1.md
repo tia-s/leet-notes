@@ -277,7 +277,18 @@ $2 \times (4 + 1 + 2) = 14$
 The sum of the original array is $4 + 1 + 2 + 1 + 2 = 10$.
 $14 - 10 = 4$.
 
-```text
+Creating a `set()` from the array requires iterating through all $n$ elements and allocating new memory to store the unique numbers, taking $O(n)$ time and $O(n)$ space. The `sum()` function also iterates through the elements, taking $O(n)$ time, but it only maintains a running total, using $O(1)$ space. Combined, the operations scale linearly for an overall $O(n)$ time complexity. 
+
+However, the memory allocated for the set violates the constant space constraint, resulting in an overall $O(n)$ space complexity.
+
+$$2 \times (\text{sum of the distinct numbers}) - (\text{sum of everything})$$
+
+If the array is `[4, 1, 2, 1, 2]`, the unique numbers are `[4, 1, 2]`. 
+$2 \times (4 + 1 + 2) = 14$
+The sum of the original array is $4 + 1 + 2 + 1 + 2 = 10$.
+$14 - 10 = 4$.
+
+```lua
 Function SingleNumber(nums):
     Get unique numbers from nums (using a Set)
     sum_unique = sum(unique numbers)
@@ -288,7 +299,6 @@ Function SingleNumber(nums):
 
 ```python
 def singleNumber(nums: list[int]) -> int:
-    # set(nums) takes O(n) space, breaking the strict space constraint
     return 2 * sum(set(nums)) - sum(nums)
 ```
 
