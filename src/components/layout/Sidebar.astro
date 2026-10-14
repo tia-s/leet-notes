@@ -1,0 +1,102 @@
+---
+import { getCollection } from 'astro:content';
+
+const notes = await getCollection('notes');
+const topics = Array.from(
+  new Set(notes.flatMap((note) => note.data.tags || []))
+);
+
+const allCount = notes.length;
+const algoCount = notes.filter((n) => n.data.category === 'algorithm').length;
+const sysCount = notes.filter((n) => n.data.category === 'system-design').length;
+
+const currentPath = Astro.url.pathname;
+
+const navItems = [
+  { 
+    label: 'All notes', 
+    href: '/', 
+    count: String(allCount).padStart(2, '0'),
+    active: currentPath === '/' 
+  },
+  { 
+    label: 'Coding problems', 
+    href: '/category/algorithm', 
+    count: String(algoCount).padStart(2, '0'),
+    active: currentPath === '/category/algorithm' 
+  },
+  { 
+    label: 'System design', 
+    href: '/category/system-design', 
+    count: String(sysCount).padStart(2, '0'),
+    active: currentPath === '/category/system-design' 
+  },
+];
+---
+
+<aside class="w-64 border-r border-zinc-800/80 bg-zinc-950 flex flex-col justify-between hidden lg:flex select-none">
+  <div class="p-6 space-y-8">
+    <a href="/" class="block group">
+      <span class="text-xl font-bold tracking-tight text-zinc-100 group-hover:text-emerald-400 transition-colors">
+        leetnotes<span class="text-emerald-400">.</span>
+      </span>
+      <p class="text-xs text-zinc-400 mt-1">A little more understanding, every day.</p>
+    </a>
+
+    <nav class="space-y-1">
+      <span class="text-[10px] font-mono uppercase tracking-widest text-zinc-400 block px-3 pb-2">
+        The Journal
+      </span>
+      {navItems.map((item) => (
+        <a
+          href={item.href}
+          class={`flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+            item.active
+              ? 'bg-zinc-900 text-zinc-100 border border-zinc-800'
+              : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900/60'
+          }`}
+        >
+          <span>{item.label}</span>
+          <span class="text-xs font-mono text-zinc-400">{item.count}</span>
+        </a>
+      ))}
+    </nav>
+
+    {topics.length > 0 && (
+      <div class="space-y-2">
+        <span class="text-[10px] font-mono uppercase tracking-widest text-zinc-400 block px-3">
+          Explore Topics
+        </span>
+        <ul class="space-y-1">
+          {topics.map((topic) => (
+            <li>
+              <a
+                href={`/?tag=${encodeURIComponent(topic)}`}
+                class="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/40 transition-colors"
+              >
+                <span class="w-1.5 h-1.5 rounded-full bg-zinc-700"></span>
+                {topic}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )}
+  </div>
+
+  <div class="p-6 border-t border-zinc-900 space-y-4">
+    <div class="flex items-center gap-2">
+      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+      <span class="text-[11px] font-mono text-zinc-400">Always a work in progress</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center font-mono text-xs text-zinc-300">
+        EN
+      </div>
+      <div class="overflow-hidden">
+        <p class="text-xs font-medium text-zinc-200 truncate">The engineering journal</p>
+        <p class="text-[10px] text-zinc-400 truncate">Think. Sketch. Build. Repeat.</p>
+      </div>
+    </div>
+  </div>
+</aside>

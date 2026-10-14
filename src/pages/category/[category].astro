@@ -1,0 +1,40 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import FeaturedNote from '../../components/notes/FeaturedNote.astro';
+import NoteBrowser from '../../components/notes/NoteBrowser';
+
+export async function getStaticPaths() {
+  return [
+    { params: { category: 'algorithm' } },
+    { params: { category: 'system-design' } },
+  ];
+}
+
+const { category } = Astro.params;
+const allNotes = await getCollection('notes');
+const categoryNotes = allNotes.filter((n) => n.data.category === category);
+const featuredNote = categoryNotes[0] || allNotes[0];
+---
+
+<BaseLayout title={`LeetNotes: Engineering Journal - ${category === 'algorithm' ? 'Coding Problems' : 'System Design'}`}>
+  <div class="space-y-12">
+    <!-- Hero Section -->
+    <section class="space-y-4">
+      <span class="text-xs font-mono uppercase tracking-widest text-emerald-400">
+        {category === 'algorithm' ? 'Coding Problems' : 'System Design Architecture'}
+      </span>
+      <h1 class="text-3xl sm:text-5xl font-semibold tracking-tight text-zinc-100">
+        {category === 'algorithm' ? 'Algorithmic thinking.' : 'Distributed systems.'}
+      </h1>
+      <p class="text-base sm:text-lg text-zinc-400 max-w-2xl leading-relaxed">
+        Focused notes and breakdowns on {category === 'algorithm' ? 'data structures and algorithmic patterns' : 'scalable architecture and system design'}.
+      </p>
+    </section>
+
+    {featuredNote && <FeaturedNote note={featuredNote} />}
+
+    <!-- Interactive Note Browser Island -->
+    <NoteBrowser notes={allNotes} initialCategory={category} client:load />
+  </div>
+</BaseLayout>

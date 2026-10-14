@@ -1,0 +1,25 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Page Not Found">
+  <div class="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6">
+    <span class="text-xs font-mono uppercase tracking-widest text-emerald-400">
+      404 Error
+    </span>
+    <h1 class="text-4xl font-semibold tracking-tight text-zinc-100">
+      Page not found.
+    </h1>
+    <p class="text-zinc-400 max-w-md text-sm sm:text-base">
+      The note or resource you are looking for does not exist or has been relocated.
+    </p>
+    <div class="pt-4">
+      <a
+        href="/"
+        class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-zinc-900 text-zinc-100 border border-zinc-800 hover:bg-zinc-800 transition-colors"
+      >
+        Return to journal
+      </a>
+    </div>
+  </div>
+</BaseLayout>

@@ -1,0 +1,35 @@
+---
+import Sidebar from '../components/layout/Sidebar.astro';
+import Topbar from '../components/layout/Topbar.astro';
+import Footer from '../components/layout/Footer.astro';
+import '../styles/global.css';
+import 'katex/dist/katex.min.css';
+
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<html lang="en" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+  </head>
+  <body class="bg-zinc-950 text-zinc-100 min-h-screen flex selection:bg-emerald-500/30 selection:text-emerald-200">
+    <!-- Sidebar Navigation -->
+    <Sidebar />
+
+    <!-- Main Content Shell -->
+    <div class="flex-1 flex flex-col min-w-0">
+      <Topbar />
+      <main class="flex-1 px-8 py-8 max-w-6xl w-full mx-auto">
+        <slot />
+      </main>
+      <Footer />
+    </div>
+  </body>
+</html>
