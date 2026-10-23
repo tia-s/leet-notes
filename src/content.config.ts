@@ -2,7 +2,7 @@ import { defineCollection } from 'astro:content';
 import { glob } from 'astro/loaders';
 import { z } from 'astro/zod';
 
-export const categories = ['algorithm', 'system-design'] as const;
+export const categories = ['algorithm', 'system-design', 'low-level-systems'] as const;
 
 const notes = defineCollection({
   loader: glob({ pattern: '**/*.md', base: './src/content/notes' }),

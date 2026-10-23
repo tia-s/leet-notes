@@ -9,6 +9,7 @@ const topics = Array.from(
 const allCount = notes.length;
 const algoCount = notes.filter((n) => n.data.category === 'algorithm').length;
 const sysCount = notes.filter((n) => n.data.category === 'system-design').length;
+const lowLevelCount = notes.filter((n) => n.data.category === 'low-level-systems').length;
 
 const currentPath = Astro.url.pathname;
 
@@ -30,6 +31,12 @@ const navItems = [
     href: '/category/system-design', 
     count: String(sysCount).padStart(2, '0'),
     active: currentPath === '/category/system-design' 
+  },
+  {
+    label: 'Low Level Systems',
+    href: '/category/low-level-systems',
+    count: String(lowLevelCount).padStart(2, '0'),
+    active: currentPath === '/category/low-level-systems',
   },
 ];
 ---

@@ -34,7 +34,7 @@ This document details the architectural decisions, trade-offs, and design patter
 ```yaml
 title: Two Sum, and the case for a hash map
 summary: Starting with the obvious solution...
-category: algorithm        # algorithm | system-design
+category: algorithm        # algorithm | system-design | low-level-systems
 tags: [Arrays, Hash maps]
 date: 2026-10-10
 featured: true
@@ -60,6 +60,7 @@ featured: true
 | `layouts/BaseLayout.astro` | Page shell shared by every page |
 | `layouts/NoteLayout.astro` | Reading view for a single note |
 | `pages/index.astro` | Home: featured note and the notes list |
+| `pages/category/[category].astro` | Category views for coding problems, system design, and low-level systems |
 | `pages/notes/[...slug].astro` | Generates one page per note at build time |
 | `components/notes/NoteBrowser.tsx` | Interactive tabs, search, and sort |
 | `lib/notes.ts` | Single place for querying and counting notes |

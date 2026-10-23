@@ -8,33 +8,52 @@ export async function getStaticPaths() {
   return [
     { params: { category: 'algorithm' } },
     { params: { category: 'system-design' } },
+    { params: { category: 'low-level-systems' } },
   ];
 }
 
-const { category } = Astro.params;
+const category = Astro.params.category ?? '';
+const categoryDetails = {
+  algorithm: {
+    title: 'Coding Problems',
+    eyebrow: 'Coding Problems',
+    heading: 'Algorithmic thinking.',
+    description: 'Focused notes and breakdowns on data structures and algorithmic patterns.',
+  },
+  'system-design': {
+    title: 'System Design',
+    eyebrow: 'System Design Architecture',
+    heading: 'Distributed systems.',
+    description: 'Focused notes and breakdowns on scalable architecture and system design.',
+  },
+  'low-level-systems': {
+    title: 'Low Level Systems',
+    eyebrow: 'C · Go · Rust',
+    heading: 'Closer to the machine.',
+    description: 'Systems questions explored through memory, concurrency, operating systems, and implementation.',
+  },
+};
+const details = categoryDetails[category as keyof typeof categoryDetails];
 const allNotes = await getCollection('notes');
-const categoryNotes = allNotes.filter((n) => n.data.category === category);
-const featuredNote = categoryNotes[0] || allNotes[0];
+const categoryNotes = allNotes.filter((note) => note.data.category === category);
+const featuredNote = categoryNotes[0];
 ---
 
-<BaseLayout title={`LeetNotes: Engineering Journal - ${category === 'algorithm' ? 'Coding Problems' : 'System Design'}`}>
+<BaseLayout title={`LeetNotes: Engineering Journal - ${details.title}`}>
   <div class="space-y-12">
-    <!-- Hero Section -->
     <section class="space-y-4">
       <span class="text-xs font-mono uppercase tracking-widest text-emerald-400">
-        {category === 'algorithm' ? 'Coding Problems' : 'System Design Architecture'}
+        {details.eyebrow}
       </span>
       <h1 class="text-3xl sm:text-5xl font-semibold tracking-tight text-zinc-100">
-        {category === 'algorithm' ? 'Algorithmic thinking.' : 'Distributed systems.'}
+        {details.heading}
       </h1>
       <p class="text-base sm:text-lg text-zinc-400 max-w-2xl leading-relaxed">
-        Focused notes and breakdowns on {category === 'algorithm' ? 'data structures and algorithmic patterns' : 'scalable architecture and system design'}.
+        {details.description}
       </p>
     </section>
 
     {featuredNote && <FeaturedNote note={featuredNote} />}
-
-    <!-- Interactive Note Browser Island -->
     <NoteBrowser notes={allNotes} initialCategory={category} client:load />
   </div>
 </BaseLayout>

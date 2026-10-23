@@ -33,6 +33,7 @@ export default function NoteBrowser({ notes, initialCategory = 'all' }: NoteBrow
 
   const algoCount = notes.filter((n) => n.data.category === 'algorithm').length;
   const sysCount = notes.filter((n) => n.data.category === 'system-design').length;
+  const lowLevelCount = notes.filter((n) => n.data.category === 'low-level-systems').length;
 
   return (
     <div className="space-y-6">
@@ -79,6 +80,20 @@ export default function NoteBrowser({ notes, initialCategory = 'all' }: NoteBrow
             <span>System design</span>
             <span className="bg-zinc-900 px-1.5 py-0.5 rounded text-[10px] text-zinc-400">
               {sysCount}
+            </span>
+          </a>
+
+          <a
+            href="/category/low-level-systems"
+            className={`px-3 py-1.5 rounded-md text-xs font-mono transition-colors flex items-center gap-2 ${
+              initialCategory === 'low-level-systems'
+                ? 'bg-zinc-800 text-zinc-100 border border-zinc-700'
+                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+            }`}
+          >
+            <span>Low Level Systems</span>
+            <span className="bg-zinc-900 px-1.5 py-0.5 rounded text-[10px] text-zinc-400">
+              {lowLevelCount}
             </span>
           </a>
         </div>
@@ -139,7 +154,7 @@ export default function NoteBrowser({ notes, initialCategory = 'all' }: NoteBrow
                         </span>
                         <span className="text-emerald-400 font-medium text-xs">Coding problem</span>
                       </>
-                    ) : (
+                    ) : category === 'system-design' ? (
                       <>
                         <span className="text-purple-400">
                           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -147,6 +162,15 @@ export default function NoteBrowser({ notes, initialCategory = 'all' }: NoteBrow
                           </svg>
                         </span>
                         <span className="text-purple-400 font-medium text-xs">System design</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-sky-400">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+                          </svg>
+                        </span>
+                        <span className="text-sky-400 font-medium text-xs">Low Level Systems</span>
                       </>
                     )}
                   </div>

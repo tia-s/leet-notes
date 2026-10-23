@@ -4,7 +4,7 @@ summary: "Finding the single unique element in an array where every other elemen
 category: "algorithm"
 tags: ["Bit Manipulation"]
 date: "2026-10-12T12:00:00Z"
-featured: true
+featured: false
 ---
 
 ## LeetCode 136: Single Number
