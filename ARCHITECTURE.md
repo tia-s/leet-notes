@@ -75,7 +75,7 @@ leetnotes/
 ├─ package.json
 ├─ tsconfig.json
 ├─ public/
-│  └─ favicon.svg
+│  └─ favicon.ico
 └─ src/
    ├─ content.config.ts        # note schema
    ├─ content/
