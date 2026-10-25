@@ -71,9 +71,16 @@ const { Content } = await render(note);
     color: #b4b4bb;
   }
   .markdown-body ul, .markdown-body ol {
-    margin-left: 1.25rem;
+    padding-left: 1.25rem;
     margin-bottom: 1rem;
     color: #b4b4bb;
+    list-style-position: outside;
+  }
+  .markdown-body ul {
+    list-style-type: disc;
+  }
+  .markdown-body ol {
+    list-style-type: decimal;
   }
   .markdown-body li {
     margin-bottom: 0.375rem;
