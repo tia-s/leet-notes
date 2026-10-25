@@ -1,35 +1,48 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { CollectionEntry } from 'astro:content';
 
 interface NoteBrowserProps {
   notes: CollectionEntry<'notes'>[];
   initialCategory?: string;
+  initialTag?: string;
 }
 
-export default function NoteBrowser({ notes, initialCategory = 'all' }: NoteBrowserProps) {
+export default function NoteBrowser({ notes, initialCategory = 'all', initialTag = '' }: NoteBrowserProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const [selectedTag, setSelectedTag] = useState(initialTag);
+
+  useEffect(() => {
+    const tagFromUrl = new URLSearchParams(window.location.search).get('tag');
+    setSelectedTag(tagFromUrl ?? initialTag);
+  }, [initialTag]);
 
   // Filter and sort notes based on the server-provided initialCategory and local search/sort state
   const filteredNotes = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
     return notes
       .filter((note) => {
         const matchesCategory =
           initialCategory === 'all' || note.data.category === initialCategory;
 
-        const matchesSearch =
-          searchQuery.trim() === '' ||
-          note.data.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          note.data.summary.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesTag =
+          selectedTag === '' || note.data.tags.some((tag) => tag.toLowerCase() === selectedTag.toLowerCase());
 
-        return matchesCategory && matchesSearch;
+        const matchesSearch =
+          normalizedQuery === '' ||
+          note.data.title.toLowerCase().includes(normalizedQuery) ||
+          note.data.summary.toLowerCase().includes(normalizedQuery) ||
+          note.data.tags.some((tag) => tag.toLowerCase().includes(normalizedQuery));
+
+        return matchesCategory && matchesTag && matchesSearch;
       })
       .sort((a, b) => {
         const dateA = new Date(a.data.date).getTime();
         const dateB = new Date(b.data.date).getTime();
         return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
       });
-  }, [notes, initialCategory, searchQuery, sortOrder]);
+  }, [notes, initialCategory, selectedTag, searchQuery, sortOrder]);
 
   const algoCount = notes.filter((n) => n.data.category === 'algorithm').length;
   const sysCount = notes.filter((n) => n.data.category === 'system-design').length;
@@ -147,12 +160,12 @@ export default function NoteBrowser({ notes, initialCategory = 'all' }: NoteBrow
                   <div className="flex items-center gap-2 text-xs font-mono tracking-wider uppercase">
                     {category === 'algorithm' ? (
                       <>
-                        <span className="text-emerald-400">
+                        <span className="text-orange-300">
                           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                           </svg>
                         </span>
-                        <span className="text-emerald-400 font-medium text-xs">Coding problem</span>
+                        <span className="text-orange-300 font-medium text-xs">Coding problem</span>
                       </>
                     ) : category === 'system-design' ? (
                       <>
@@ -167,7 +180,7 @@ export default function NoteBrowser({ notes, initialCategory = 'all' }: NoteBrow
                       <>
                         <span className="text-sky-400">
                           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m12 3 9 5-9 5-9-5 9-5Z M3 12l9 5 9-5 M3 16l9 5 9-5" />
                           </svg>
                         </span>
                         <span className="text-sky-400 font-medium text-xs">Low Level Systems</span>

@@ -36,7 +36,7 @@ We could compare every number with every other number to count occurrences. The 
 
 ### Potential Solution 1: Brute Force - $O(n^2)$ time; $O(1)$ space
 
-```text
+```lua
 Function SingleNumber(nums):
     For each num in nums:
         count = 0
@@ -64,7 +64,7 @@ This makes me think of sorting the array first, then looping through with a poin
 
 While this approach feels linear because we only loop through the array once ($O(n)$), the initial sorting step takes $O(n \log n)$ time. Therefore, the overall time complexity is $O(n \log n)$, which is better than the previous solution but also doesn't meet the linear $O(n)$ constraint.
 
-```text
+```lua
 Function SingleNumber(nums):
     Sort nums in ascending order
     
@@ -96,7 +96,7 @@ Thinking of a way to solve this in strict linear time without sorting, we could 
 
 ### Potential Solution 3: Tracking counts in a Hash Map - $O(n)$ time; $O(n)$ space
 
-```text
+```lua
 Function SingleNumber(nums):
     Initialize an empty hash map 'counts'
     
@@ -163,7 +163,7 @@ Now the only flags left "on" are the negative sign, 2 tens, and 4 ones (aka -24)
 
 This works because we treat seeing the number like flipping a switch. This allows us to keep track of what we've already seen without sorting or storing numbers in a dynamically-sized data structure.
 
-```text
+```lua
 Function SingleNumber(nums):
     Initialize empty dictionary 'toggles' to track (place_value, digit)
     Initialize 'sign_toggle' = 0
@@ -246,7 +246,7 @@ XOR only shows on if the digits differ, so we can apply this to every digit inde
 
 This also makes the constraints within which this solution will actually work very clear. The size of the list will always be odd since only one number isn't duplicated. The lone number must appear an odd number of times, and every other number has to appear an even number of times.
 
-```text
+```lua
 Function SingleNumber(nums):
     Initialize result = 0
     

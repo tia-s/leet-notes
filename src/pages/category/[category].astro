@@ -16,15 +16,15 @@ const category = Astro.params.category ?? '';
 const categoryDetails = {
   algorithm: {
     title: 'Coding Problems',
-    eyebrow: 'Coding Problems',
-    heading: 'Algorithmic thinking.',
-    description: 'Focused notes and breakdowns on data structures and algorithmic patterns.',
+    eyebrow: 'Patterns · Logic · Algorithms',
+    heading: 'Think in patterns.',
+    description: 'Coding problems explored through algorithms, data structures, and understanding the reasoning behind efficient solutions.',
   },
   'system-design': {
     title: 'System Design',
-    eyebrow: 'System Design Architecture',
-    heading: 'Distributed systems.',
-    description: 'Focused notes and breakdowns on scalable architecture and system design.',
+    eyebrow: 'Architecture · Scale · Trade-offs',
+    heading: 'Design for scale.',
+    description: 'System designs that balance reliability, performance, and complexity as services grow.',
   },
   'low-level-systems': {
     title: 'Low Level Systems',
@@ -36,13 +36,20 @@ const categoryDetails = {
 const details = categoryDetails[category as keyof typeof categoryDetails];
 const allNotes = await getCollection('notes');
 const categoryNotes = allNotes.filter((note) => note.data.category === category);
-const featuredNote = categoryNotes[0];
+const featuredNote = categoryNotes.find((note) => note.data.featured);
 ---
 
 <BaseLayout title={`LeetNotes: Engineering Journal - ${details.title}`}>
   <div class="space-y-12">
     <section class="space-y-4">
-      <span class="text-xs font-mono uppercase tracking-widest text-emerald-400">
+      <span class:list={[
+        'text-xs font-mono uppercase tracking-widest',
+        category === 'algorithm'
+          ? 'text-orange-300'
+          : category === 'low-level-systems'
+            ? 'text-sky-400'
+            : 'text-purple-400',
+      ]}>
         {details.eyebrow}
       </span>
       <h1 class="text-3xl sm:text-5xl font-semibold tracking-tight text-zinc-100">
@@ -54,6 +61,6 @@ const featuredNote = categoryNotes[0];
     </section>
 
     {featuredNote && <FeaturedNote note={featuredNote} />}
-    <NoteBrowser notes={allNotes} initialCategory={category} client:load />
+    <NoteBrowser notes={categoryNotes} initialCategory={category} client:load />
   </div>
 </BaseLayout>

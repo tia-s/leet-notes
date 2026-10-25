@@ -19,7 +19,14 @@ const formattedDate = new Date(date).toLocaleDateString('en-US', {
 >
   <div class="space-y-3">
     <div class="flex items-center justify-between">
-      <span class="text-[10px] font-mono uppercase tracking-wider text-emerald-400 bg-emerald-950/40 border border-emerald-900/50 px-2 py-0.5 rounded">
+      <span class:list={[
+        'text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded border',
+        category === 'algorithm'
+          ? 'text-orange-300 bg-orange-950/40 border-orange-900/50'
+          : category === 'system-design'
+            ? 'text-purple-400 bg-purple-950/40 border-purple-900/50'
+            : 'text-sky-400 bg-sky-950/40 border-sky-900/50',
+      ]}>
         {category === 'algorithm' ? 'Coding Problem' : category === 'system-design' ? 'System Design' : 'Low Level Systems'}
       </span>
     </div>
