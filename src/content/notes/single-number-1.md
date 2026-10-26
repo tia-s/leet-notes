@@ -303,3 +303,12 @@ def singleNumber(nums: list[int]) -> int:
 ```
 
 Ultimately, the bit manipulation (XOR) solution is the only one that satisfies both the $O(1)$ space and $O(n)$ time constraints while remaining perfectly robust against edge cases. It is perfectly robust for this specific problem, but its logic strictly depends on the input constraints: XOR cancellation only isolates the target if exactly one element occurs an odd number of times and every other element occurs an even number of times.
+
+| Strategy | Time complexity | Extra space complexity | Status |
+|:---|:---|:---|:---|
+| Brute force counting | $O(N^2)$ | $O(1)$ | Too slow |
+| Sorting and adjacent-pair check | $O(N \log N)$ | $O(1)$ | Finds the answer, but misses the linear-time requirement |
+| Hash map of counts | $O(N)$ | $O(N)$ | Works, but uses extra space |
+| Place-value toggling | $O(N)$ | $O(1)$ | Works under the stated number and frequency constraints |
+| **Bit manipulation (XOR)** | **$O(N)$** | **$O(1)$** | **Meets both constraints** |
+| Set-and-sum math | $O(N)$ | $O(N)$ | Works, but uses extra space |
