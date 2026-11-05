@@ -97,96 +97,174 @@ Kafka acts as a shock absorber by queuing order payloads. Downstream worker serv
    * **If 10 Minutes Expire / Payment Fails:** The Redis TTL expires (or an explicit cancellation triggers), and a background process increments the stock counter in Redis (`INCR stock`), making the seat available to other buyers.
 
 ```md
-# RFC: Flash Sale Ticketing System 
-**Date:** 2026-10-24  
+# RFC: Flash Sale Ticketing System
+
+**Date:** October 24, 2026
+
 **Status:** Draft
 
-## Context & Scope
-- **Background:** The legacy ticketing architecture processes inventory deductions through synchronous database locks. During high-demand events, this causes lock contention, query timeouts, and occasional overselling.
-- **Goals:**
-  * Process 50,000 ticket reservations in under 5 minutes without database degradation.
-  * Guarantee zero oversold tickets under maximum load.
-- **Non-Goals:** This design excludes seat-map rendering and per-seat selection. It only handles aggregate section-level inventory.
+## 1. Scope & Clarifying Questions
 
-## Requirements
-- **Functional:** Users can view events, request a 10-minute ticket hold, and complete purchases within the hold window.
-- **Availability:** 99.9% overall target. During peak spikes, excess traffic is intentionally shed at the edge to protect backend infrastructure and maintain inventory consistency.
-- **Durability:** Zero lost orders once payment confirmation is recorded.
-- **Consistency:** Strong consistency is required for inventory counts and read-your-writes semantics for order history.
-- **Latency & Throughput:** Ticket hold requests must return in p95 < 200ms.
+### In Scope
 
-## Capacity & Scale Expectations
-- **Traffic/Users:** Peak load is 500,000 concurrent users hitting the reservation endpoint simultaneously for 50,000 seats.
-- **Read/Write Ratio:** Normally 100:1; during flash sales it becomes 1:1.
-- **Data Volume:** 10M users, 1M orders per month.
+* High-concurrency ticket reservation engine supporting 50,000 reservations in under 5 minutes without database degradation.
 
-## Proposed Architecture
-- **High-Level Design:**
-  1. Static event metadata is served from the CDN.
-  2. **Traffic Shedding & Edge Filtering:** The API Gateway receives traffic, applies token bucket rate limiting, filters duplicate requests, and immediately rejects excess/bot traffic (returning `429` or `410`).
-  3. **Atomic In-Memory Reservation:** The Flash Sale Service executes a single atomic Lua script on a Redis Cluster. This script verifies the user hasn't already reserved a ticket, checks remaining stock, decrements inventory, and sets a 10-minute reservation TTL (`EX 600`).
-  4. **Asynchronous Order Processing:** On successful Redis reservation, the service publishes an `OrderCreated` event to an Apache Kafka topic to decouple the instant traffic spike from downstream systems.
-  5. **Controlled Persistence:** Downstream worker services consume Kafka events sequentially at a sustainable rate, inserting pending orders into PostgreSQL.
-  6. **Payment & Timeout Finalization:** Successful payment updates the order in PostgreSQL. If the 10-minute window expires without payment, the Redis TTL expires, and a background worker replenishes the Redis stock counter.
-- **Core Components:** API Gateway, Redis Cluster, Kafka, PostgreSQL.
+* Zero-overselling guarantee under maximum load using atomic in-memory stock reservation.
 
-## System Interface
-- **Endpoints:**
+* Asynchronous persistence layer decoupling traffic spikes from database writes.
+
+### Out of Scope
+
+* Seat-map rendering and per-seat selection (handles aggregate section-level inventory only).
+
+* Payment processing implementation (delegated to Stripe integration).
+
+### Clarifying Questions
+
+1. If a user's payment fails or times out, do tickets go back into the global pool immediately, or are they released in batches?
+2. Should access be first-come, first-served, or should we use a virtual waiting room/queue system?
+3. What is the maximum number of tickets a single user can purchase in one transaction?
+
+## 2. Problem Statement & Core Technical Challenges
+
+### Problem Statement
+
+The legacy ticketing architecture processes inventory deductions through synchronous database locks. During high-demand events, this causes severe lock contention, query timeouts, and occasional overselling.
+
+### Core Technical Challenges
+
+* Handling peak bursts of 500,000 concurrent users hitting the reservation endpoint simultaneously for 50,000 seats.
+
+* Managing a shift in Read/Write ratio from a standard 100:1 down to 1:1 during flash sales.
+
+* Guaranteeing zero oversold tickets under maximum load while maintaining p95 response times under 200ms.
+
+## 3. Requirements (Functional & Non-Functional)
+
+### Functional Requirements
+
+* **FR-1:** Users can view events, request a 10-minute ticket hold, and complete purchases within the hold window.
+
+* **FR-2:** API Gateway must shed excess/bot traffic at the edge (returning `429` or `410`).
+
+* **FR-3:** System must enforce atomic inventory deduction via single-threaded Redis Lua scripts.
+
+* **FR-4:** System must publish `OrderCreated` events to Apache Kafka on successful reservation for asynchronous database ingestion.
+
+### Non-Functional Requirements
+
+* **NFR-1 (Availability):** Target 99.9% overall availability. Edge traffic shedding protects backend infrastructure during peak spikes.
+
+* **NFR-2 (Durability & Consistency):** Zero lost orders once payment confirmation is recorded; strong consistency for inventory counts and read-your-writes semantics for order history.
+
+* **NFR-3 (Latency):** Ticket hold requests must return in p95 < 200ms.
+
+* **NFR-4 (Scale Expectations):** Support 500,000 concurrent users, 10M total users, and 1M orders per month.
+
+## 4. High-Level Components & Data Flow
+
+```
+[ Incoming User Traffic ]
+           │
+           ▼
+┌──────────────────────────────────────┐
+│ 1. API Gateway (Rate Limit / Shed)   │  <-- Token bucket & bot filtering
+└──────────────────────────────────────┘
+           │ (Valid Requests)
+           ▼
+┌──────────────────────────────────────┐
+│ 2. Flash Sale Service (Redis Lua)    │  <-- Atomic deduction & 10-min TTL
+└──────────────────────────────────────┘
+           │ (Successful Reservation)
+           ▼
+┌──────────────────────────────────────┐
+│ 3. Kafka Queue (OrderCreated Event)  │  <-- Async write decoupling
+└──────────────────────────────────────┘
+           │
+           ▼
+┌──────────────────────────────────────┐
+│ 4. Worker Pool & PostgreSQL          │  <-- Async DB order creation
+└──────────────────────────────────────┘
+           │
+           ▼
+[ Payment & Confirmation ]
+
+```
+
+## 5. Alternatives Considered (Tech, Storage, & Trade-offs)
+
+| Dimension | Alternative Considered | Selected Approach | Rationale & Trade-offs |
+| ----- | ----- | ----- | ----- |
+| **Storage Engine** | Direct PostgreSQL `SELECT FOR UPDATE` | Redis Cluster + Atomic Lua Script | Database lock contention causes CPU spikes and cascading failures under 500k QPS peak load; Redis handles atomic in-memory ops instantly. |
+| **Data Model** | DynamoDB / NoSQL | PostgreSQL + Redis Hybrid | NoSQL lacks native multi-table ACID guarantees, risking data corruption and orphaned records unless complex app-level locks are built. |
+
+## 6. Proposed Architecture (Tech Stack, APIs, Data Schema)
+
+### Tech Stack
+
+* **Primary Database:** PostgreSQL (ACID compliance for orders)
+
+* **In-Memory Cache / Lock:** Redis Cluster (in-memory stock control & deduplication)
+
+* **Event Bus:** Apache Kafka (decoupling spike traffic from persistence)
+
+* **Edge Layer:** API Gateway (rate limiting & traffic shedding)
+
+* **Payments:** Stripe API
+
+### System Interfaces
+
+* **API Endpoints:**
   * `POST /v1/reservations`
-    * *Headers:* `Idempotency-Key: <uuid>`
-    * *Payload:* `{ "event_id": "123", "ticket_tier": "GA", "quantity": 1 }`
-    * *Response:* `202 Accepted` with `reservation_id` and `expires_at`, `410 Sold Out` if sold out, or `409 Conflict` (or cached status) for duplicate account requests.
+    * **Headers:** `Idempotency-Key: <uuid>`
+    * **Payload:** `{ "event_id": "123", "ticket_tier": "GA", "quantity": 1 }`
+    * **Response:** `202 Accepted` (`reservation_id`, `expires_at`), `410 Sold Out`, or `409 Conflict`.
 
-## Data Design
-- **Storage Choices:** PostgreSQL for ACID compliance on financial orders; Redis Cluster for in-memory stock control and deduplication.
-- **Schema:**
-  * `Events` (`id`, `name`, `total_capacity`)
-  * `Orders` (`id`, `user_id`, `event_id`, `status`, `created_at`)
-- **Indexes:** B-tree index on `Orders(user_id)`.
+### Data Schema
 
-## Scaling Strategy
-- **Edge Filtering:** API Gateway absorbs the $10\times$ traffic spike before it hits compute services.
-- **Caching:** Event metadata is cached at the edge.
-- **Async Work:** Database writes are decoupled from the request cycle through Kafka, preventing connection pool exhaustion.
-- **Bottlenecks:** The Redis partition holding the event inventory is the primary bottleneck, mitigated by using a Redis Cluster to distribute memory and network throughput.
+```sql
+CREATE TABLE events (
+  id UUID PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  total_capacity INT NOT NULL
+);
 
-## Consistency & Concurrency
-- **Conflict Handling:** Race conditions and overselling are eliminated by evaluating stock and deduplication natively within a single-threaded Redis Lua script.
-- **Idempotency:** All reservation requests require a client-generated idempotency key (uuid) to prevent double-charging on network retries.
-- **Transactions:** A TTL expiration event compensates abandoned checkouts by restoring inventory in Redis and marking the order expired in PostgreSQL.
+CREATE TABLE orders (
+  id UUID PRIMARY KEY,
+  user_id UUID NOT NULL,
+  event_id UUID NOT NULL,
+  status VARCHAR(50) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
-## Alternatives Considered
-- **Alternative 1: Direct PostgreSQL `SELECT FOR UPDATE`**
-  * Rejected because lock contention will cause CPU spikes and cascading failures under the 500k QPS peak load.
-- **Alternative 2: DynamoDB / NoSQL**
-  * Rejected because the lack of native multi-table ACID guarantees risks data corruption and orphaned records unless slow, error-prone application-level locks are built.
+CREATE INDEX idx_orders_user_id ON orders(user_id);
+```
 
-## Dependencies & Integrations
-- **Third-Party APIs:** Stripe handles payments. If Stripe slows down, ticket holds must be extended.
+## 7. Risks & Open Questions
 
-## Operational Considerations
-- **Observability:** Kafka consumer lag and Redis memory usage are primary health metrics.
-- **Graceful Degradation:** Redis and Kafka continue to operate during PostgreSQL or payment gateway outages, buffering orders safely until downstream systems recover.
+### Risks
 
-## Rollout, Migration & Rollback
-- **Deployment Strategy:** The async design is dark-launched beside the legacy architecture to validate performance and stability under real traffic before full rollout.
-- **Rollback Plan:** A feature flag routes writes back to the legacy synchronous logic if anomalies are detected.
+* Malicious actors hoarding reservation time windows to scalp inventory.
+  
+  **Mitigation:** Strict rate limiting per IP/user ID at the API Gateway, enforcing Redis deduplication per account, and requiring CAPTCHA validation before reservation generation.
 
-## Testing Strategy
-- **Load Testing:** Use Locust to simulate 500,000 concurrent reservation requests targeting a single event stock key.
-- **Failure Testing:** Terminate a PostgreSQL node while under load to verify Kafka message retention and seamless recovery.
+* Redis "Hot Key" bottleneck. Since  all 500,000 QPS target a single event's stock key, it forces all traffic onto a single Redis shard, potentially exceeding the node's single-threaded CPU limit (~100k ops/sec).
+    
+  **Mitigation:** Implement a local in-memory flag in the Flash Sale Service that flips to `true` once Redis returns `-1` (Sold Out). This instantly sheds all subsequent traffic at the compute layer without hitting Redis.
 
-## Risks & Open Questions
-- **Risk:** Malicious actors hoarding reservation time windows to scalp inventory.
-  * **Mitigation:** Strict rate limiting per IP/user ID at the API Gateway, enforcing Redis deduplication per account, and requiring CAPTCHA validation before reservation generation.
-- **Risk:** Redis "Hot Key" bottleneck. Since  all 500,000 QPS target a single event's stock key, it forces all traffic onto a single Redis shard, potentially exceeding the node's single-threaded CPU limit (~100k ops/sec).
-  * **Mitigation:** Implement a local in-memory flag in the Flash Sale Service that flips to `true` once Redis returns `-1` (Sold Out). This instantly sheds all subsequent traffic at the compute layer without hitting Redis.
-- **Risk:** Kafka consumer lag exceeds the 10-minute Redis TTL. If downstream database writes or payment processing gets heavily delayed, the Redis reservation might expire and return the ticket to the pool while the user is actively entering their credit card.
-  * **Mitigation:** Dynamically scale Kafka consumer workers based on topic lag. Alternatively, implement a "TTL Extension" heartbeat from the checkout page that extends the Redis lock while the user is actively typing.
-- **Risk:** Partial failures (The "Zombie Reservation"). The Flash Sale Service executes the Redis Lua script successfully, but the service crashes or the network drops right before it can publish the `OrderCreated` event to Kafka.
-  * **Mitigation:** The 10-minute TTL on the Redis reservation key naturally handles this. If the order never reaches Kafka and the database, the temporary Redis key silently expires and the inventory is freed.
-- **Open Question:** How do we handle refunds or cancellations post-purchase? 
-  * *Note:* Do we feed these back into a rolling inventory pool, or batch them for a secondary "second-chance" flash sale?
+* Kafka consumer lag exceeds the 10-minute Redis TTL. If downstream database writes or payment processing gets heavily delayed, the Redis reservation might expire and return the ticket to the pool while the user is actively entering their credit card. 
+
+  **Mitigation:** Dynamically scale Kafka consumer workers based on topic lag. Alternatively, implement a "TTL Extension" heartbeat from the checkout page that extends the Redis lock while the user is actively typing.
+
+* Partial failures (The "Zombie Reservation"). The Flash Sale Service executes the Redis Lua script successfully, but the service crashes or the network drops right before it can publish the `OrderCreated` event to Kafka.
+
+  **Mitigation:** The 10-minute TTL on the Redis reservation key naturally handles this. If the order never reaches Kafka and the database, the temporary Redis key silently expires and the inventory is freed.
+
+### Open Questions
+
+* How do we handle refunds or cancellations post-purchase?
+
+  *Do we feed these back into a rolling inventory pool, or batch them for a secondary "second-chance" flash sale?*
 ```
 
 ## Summary
