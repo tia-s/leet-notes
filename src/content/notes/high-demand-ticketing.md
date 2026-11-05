@@ -96,7 +96,7 @@ Kafka acts as a shock absorber by queuing order payloads. Downstream worker serv
    * **If Payment Succeeds:** The _Redis_ reservation key is updated to `PAID` or removed.
    * **If 10 Minutes Expire / Payment Fails:** The Redis TTL expires (or an explicit cancellation triggers), and a background process increments the stock counter in Redis (`INCR stock`), making the seat available to other buyers.
 
-```md
+````md
 # RFC: Flash Sale Ticketing System
 
 **Date:** October 24, 2026
@@ -245,27 +245,25 @@ CREATE INDEX idx_orders_user_id ON orders(user_id);
 ### Risks
 
 * Malicious actors hoarding reservation time windows to scalp inventory.
-  
-  **Mitigation:** Strict rate limiting per IP/user ID at the API Gateway, enforcing Redis deduplication per account, and requiring CAPTCHA validation before reservation generation.
+
+  * **Mitigation:** Strict rate limiting per IP/user ID at the API Gateway, enforcing Redis deduplication per account, and requiring CAPTCHA validation before reservation generation.
 
 * Redis "Hot Key" bottleneck. Since  all 500,000 QPS target a single event's stock key, it forces all traffic onto a single Redis shard, potentially exceeding the node's single-threaded CPU limit (~100k ops/sec).
-    
-  **Mitigation:** Implement a local in-memory flag in the Flash Sale Service that flips to `true` once Redis returns `-1` (Sold Out). This instantly sheds all subsequent traffic at the compute layer without hitting Redis.
+
+  * **Mitigation:** Implement a local in-memory flag in the Flash Sale Service that flips to `true` once Redis returns `-1` (Sold Out). This instantly sheds all subsequent traffic at the compute layer without hitting Redis.
 
 * Kafka consumer lag exceeds the 10-minute Redis TTL. If downstream database writes or payment processing gets heavily delayed, the Redis reservation might expire and return the ticket to the pool while the user is actively entering their credit card. 
 
-  **Mitigation:** Dynamically scale Kafka consumer workers based on topic lag. Alternatively, implement a "TTL Extension" heartbeat from the checkout page that extends the Redis lock while the user is actively typing.
+  * **Mitigation:** Dynamically scale Kafka consumer workers based on topic lag. Alternatively, implement a "TTL Extension" heartbeat from the checkout page that extends the Redis lock while the user is actively typing.
 
 * Partial failures (The "Zombie Reservation"). The Flash Sale Service executes the Redis Lua script successfully, but the service crashes or the network drops right before it can publish the `OrderCreated` event to Kafka.
 
-  **Mitigation:** The 10-minute TTL on the Redis reservation key naturally handles this. If the order never reaches Kafka and the database, the temporary Redis key silently expires and the inventory is freed.
+  * **Mitigation:** The 10-minute TTL on the Redis reservation key naturally handles this. If the order never reaches Kafka and the database, the temporary Redis key silently expires and the inventory is freed.
 
 ### Open Questions
 
-* How do we handle refunds or cancellations post-purchase?
-
-  *Do we feed these back into a rolling inventory pool, or batch them for a secondary "second-chance" flash sale?*
-```
+* How do we handle refunds or cancellations post-purchase? Do we feed these back into a rolling inventory pool, or batch them for a secondary "second-chance" flash sale?
+````
 
 ## Summary
 

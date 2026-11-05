@@ -190,7 +190,7 @@ const { Content } = await render(note);
   .rfc-preview-content {
     color: var(--rfc-copy);
     background: var(--rfc-surface);
-    font-size: 0.875rem;
+    font-size: 0.9375rem;
     line-height: 1.65;
   }
   .rfc-preview-content h1 {
@@ -221,11 +221,17 @@ const { Content } = await render(note);
   .rfc-preview-content li strong {
     color: var(--rfc-copy);
   }
+  .rfc-preview-content table strong {
+    color: var(--rfc-copy);
+  }
   .rfc-preview-content p,
   .rfc-preview-content li {
     color: var(--rfc-copy);
-    font-size: 0.875rem;
+    font-size: 0.9375rem;
     line-height: 1.65;
+  }
+  .rfc-preview-content table {
+    font-size: 0.9375rem;
   }
   .rfc-preview-content p {
     margin: 0 0 0.75rem;
@@ -275,12 +281,33 @@ const { Content } = await render(note);
     color: #d4d4d8;
     font-weight: 600;
   }
-  .rfc-preview-content code {
+  .rfc-preview-content :not(pre) > code {
     color: #34d399;
     background: #18181b;
     border: 1px solid #303036;
     border-radius: 0.25rem;
     padding: 0.1rem 0.35rem;
+    font-size: 0.875rem;
+  }
+  .rfc-preview-content pre {
+    margin: 1.25rem 0;
+    padding: 1rem;
+    overflow-x: auto;
+    color: #d4d4d8;
+    background: #09090b;
+    border: 1px solid #27272a;
+    border-radius: 0.5rem;
+  }
+  .rfc-preview-content pre code {
+    display: block;
+    padding: 0;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    font-size: 0.75rem;
+    line-height: 1.65;
+    white-space: pre;
   }
   .rfc-preview-content > :first-child {
     margin-top: 0;
@@ -325,8 +352,10 @@ const { Content } = await render(note);
 
     const metadataLines = sourceText.match(/^\*\*[^*\n]+\*\*.*$/gm) ?? [];
     if (metadataLines.length > 0) {
-      const metadataParagraph = preview.querySelector('p');
-      metadataParagraph?.remove();
+      const metadataText = new Set(metadataLines.map((line) => line.replaceAll('**', '').trim()));
+      for (const paragraph of preview.querySelectorAll('p')) {
+        if (metadataText.has(paragraph.textContent?.trim() ?? '')) paragraph.remove();
+      }
 
       const metadata = document.createElement('div');
       metadata.className = 'rfc-preview-metadata';
