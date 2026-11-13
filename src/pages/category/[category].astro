@@ -1,7 +1,6 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import FeaturedNote from '../../components/notes/FeaturedNote.astro';
 import NoteBrowser from '../../components/notes/NoteBrowser';
 
 export async function getStaticPaths() {
@@ -15,31 +14,29 @@ export async function getStaticPaths() {
 const category = Astro.params.category ?? '';
 const categoryDetails = {
   algorithm: {
-    title: 'Coding Problems',
-    eyebrow: 'Patterns · Logic · Algorithms',
-    heading: 'Think in patterns.',
-    description: 'Coding problems explored through algorithms, data structures, and understanding the reasoning behind efficient solutions.',
+    title: 'Algorithms',
+    eyebrow: 'Data structures · Techniques · Trade-offs',
+    heading: 'Algorithms',
+    description: 'Notes on algorithmic techniques and data structures, with specific problems as examples.',
   },
   'system-design': {
-    title: 'System Design',
+    title: 'System design',
     eyebrow: 'Architecture · Scale · Trade-offs',
-    heading: 'Design for scale.',
-    description: 'System designs that balance reliability, performance, and complexity as services grow.',
+    heading: 'System design',
+    description: 'Notes on architecture, reliability, and trade-offs in larger systems.',
   },
   'low-level-systems': {
-    title: 'Low Level Systems',
+    title: 'Low-level systems',
     eyebrow: 'C · Go · Rust',
-    heading: 'Closer to the machine.',
-    description: 'Systems questions explored through memory, concurrency, operating systems, and implementation.',
+    heading: 'Low-level systems',
+    description: 'Notes on memory, concurrency, operating systems, and implementation details.',
   },
 };
 const details = categoryDetails[category as keyof typeof categoryDetails];
 const allNotes = await getCollection('notes');
-const categoryNotes = allNotes.filter((note) => note.data.category === category);
-const featuredNote = categoryNotes.find((note) => note.data.featured);
 ---
 
-<BaseLayout title={`LeetNotes: Engineering Journal - ${details.title}`}>
+<BaseLayout title={details.title}>
   <div class="space-y-12">
     <section class="space-y-4">
       <span class:list={[
@@ -60,7 +57,6 @@ const featuredNote = categoryNotes.find((note) => note.data.featured);
       </p>
     </section>
 
-    {featuredNote && <FeaturedNote note={featuredNote} />}
-    <NoteBrowser notes={categoryNotes} initialCategory={category} client:load />
+    <NoteBrowser notes={allNotes} initialCategory={category} client:load />
   </div>
 </BaseLayout>

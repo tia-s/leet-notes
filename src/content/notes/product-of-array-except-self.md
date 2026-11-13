@@ -1,38 +1,31 @@
 ---
-title: "Product of Array Except Self"
-summary: "Given an integer array, return an array where each element is the product of all input elements except the one at the same index."
+title: "How Can Prefix and Suffix Products Replace Division?"
+summary: "Each output can be built from the products on either side of its index."
 category: "algorithm"
 tags: ["Dynamic Programming", "Prefix-Suffix"]
 date: "2026-10-26T12:00:00Z"
 featured: false
 ---
 
-## LeetCode 238: Product of Array Except Self
+## Splitting each answer into two products
 
-Given an integer array `nums`, return an array `answer` such that `answer[i]` is equal to the product of all the elements of `nums` except `nums[i]`.
+*Product of Array Except Self* asks for an output where each position is the product of every input value except the one at that index. Division is not allowed, and the target is $O(N)$ time with $O(1)$ extra space beyond the output array.
 
 ### Example
 * **Input:** `nums = [1, 2, 3, 4]`
 * **Output:** `[24, 12, 8, 6]`
 
-### Constraints
-* The solution must run in $O(N)$ time.
-* Division cannot be used.
-* The solution should use $O(1)$ extra space. The output array does not count toward extra space.
+Set aside the value at index `i`. The remaining values split into the ones on its left and the ones on its right:
 
----
+`[1, 2, (skip 3), 4]` gives `1 × 2 × 4 = 8`.
 
-When I think about solving this manually, I visualize covering the number at index `i` with my finger and multiplying all the remaining visible numbers together:
-
-$$\text{Array: } [1, \ 2, \ \overset{\text{finger}}{\boxed{3}}, \ 4] \implies 1 \times 2 \times 4 = 8$$
-
-Covering index `i` splits the remaining elements into everything to its left and everything to its right. Therefore:
+So the answer at index `i` is:
 
 $$\text{Product Except } i = (\text{Product of all elements to the left}) \times (\text{Product of all elements to the right})$$
 
-### Potential Solution 1: Total product with division - $O(n)$ time; $O(1)$ space
+### Why not divide the total product?
 
-An obvious solution was to find the product of the entire array, then divide by each element.
+One direct approach is to multiply the entire array, then divide by each element.
 
 1. Loop through `nums` to compute the total product ($1 \times 2 \times 3 \times 4 = 24$).
 2. Loop through it again and compute `24 / nums[i]` for each index.
@@ -51,11 +44,11 @@ def productExceptSelf_division(nums: list[int]) -> list[int]:
     return answer
 ```
 
-However, this approach violates the no-division constraint. It also fails when an element is zero since the total product becomes zero, and dividing by that element raises `ZeroDivisionError`.
+This uses division, which the problem rules out. It also fails when an element is zero: the total product becomes zero, and dividing by that element raises `ZeroDivisionError`.
 
-### Potential Solution 2: Two pointers / nested loops - $O(n^2)$ time; $O(1)$ space
+### Recomputing each product
 
-Without division, I can simulate the “finger” model directly. Place an outer pointer `i` on the element being skipped, then use an inner pointer `j` to multiply every other element.
+Without division, a direct approach is to skip each index in turn and multiply all the other values.
 
 ```python
 def productExceptSelf_brute_force(nums: list[int]) -> list[int]:
@@ -77,11 +70,11 @@ def productExceptSelf_brute_force(nums: list[int]) -> list[int]:
     return answer
 ```
 
-For each of the $N$ elements, the inner loop makes $N - 1$ passes, so this takes $O(N^2)$ time. On an array of size $10^5$, that is roughly $10^{10}$ operations and would cause a Time Limit Exceeded (TLE) error. The repeated work comes from recomputing overlapping products for every index instead of reusing previous calculations.
+The inner loop runs $N - 1$ times for each of the $N$ output positions, for $O(N^2)$ time. The same partial products are recomputed for many indices.
 
-### Potential Solution 3: Prefix and suffix arrays - $O(n)$ time; $O(n)$ space
+### Reusing prefix and suffix products
 
-To avoid redundant multiplications, compute prefix products (everything to the left) and suffix products (everything to the right) independently.
+For each index, calculate the product of the values before it and the product of the values after it. A forward pass builds the left products; a backward pass builds the right products.
 
 In a forward pass, each prefix product is the previous prefix product multiplied by the preceding number:
 
@@ -117,9 +110,9 @@ def productExceptSelf_two_arrays(nums: list[int]) -> list[int]:
 
 This meets the linear time requirement, but the two additional arrays make its extra space complexity $O(N)$.
 
-### Best Solution: Prefix and suffix products in one output array - $O(n)$ time; $O(1)$ extra space
+### Storing prefixes in the output array
 
-The prefix products can instead be stored directly in the `answer` array during the forward pass. Then, during the backward pass, a single integer (`running_right_product`) tracks the suffix product and is multiplied into each answer. No additional arrays are needed.
+The output array can hold the prefix products during the forward pass. In the backward pass, a single integer, `running_right_product`, tracks the suffix product and is multiplied into each answer. This avoids allocating separate prefix and suffix arrays.
 
 ```python
 def productExceptSelf(nums: list[int]) -> list[int]:
@@ -158,9 +151,9 @@ Index  nums[i]  Prefix  Right before  Result  Right after
 
 The result is `[24, 12, 8, 6]`.
 
-| Strategy | Time complexity | Extra space complexity | Status |
-|:---|:---|:---|:---|
-| Total product with division | $O(N)$ | $O(1)$ | Invalid (uses division and fails on zero) |
-| Two pointers / nested loops | $O(N^2)$ | $O(1)$ | Too slow (Time Limit Exceeded) |
-| Explicit prefix/suffix arrays | $O(N)$ | $O(N)$ | Suboptimal space |
-| **Single output array + scalar (best)** | **$O(N)$** | **$O(1)$** | **Meets both constraints** |
+| Approach | Time complexity | Extra space |
+|:---|:---|:---|
+| Total product with division | $O(N)$ | $O(1)$ |
+| Recompute each product | $O(N^2)$ | $O(1)$ |
+| Separate prefix and suffix arrays | $O(N)$ | $O(N)$ |
+| **Output array and one running product** | **$O(N)$** | **$O(1)$** |

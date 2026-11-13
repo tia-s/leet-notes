@@ -76,7 +76,7 @@ export default function NoteBrowser({ notes, initialCategory = 'all', initialTag
                 : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
             }`}
           >
-            <span>Coding problems</span>
+            <span>Algorithms</span>
             <span className="bg-zinc-900 px-1.5 py-0.5 rounded text-[10px] text-zinc-400">
               {algoCount}
             </span>
@@ -104,7 +104,7 @@ export default function NoteBrowser({ notes, initialCategory = 'all', initialTag
                 : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
             }`}
           >
-            <span>Low Level Systems</span>
+            <span>Low-level systems</span>
             <span className="bg-zinc-900 px-1.5 py-0.5 rounded text-[10px] text-zinc-400">
               {lowLevelCount}
             </span>
@@ -136,7 +136,7 @@ export default function NoteBrowser({ notes, initialCategory = 'all', initialTag
 
       {/* Note Count Status */}
       <div className="text-xs font-mono text-zinc-500">
-        Showing {filteredNotes.length} {filteredNotes.length === 1 ? 'note' : 'notes'} in the journal
+        Showing {filteredNotes.length} {filteredNotes.length === 1 ? 'note' : 'notes'}
       </div>
 
       {/* Note Grid */}
@@ -165,7 +165,7 @@ export default function NoteBrowser({ notes, initialCategory = 'all', initialTag
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                           </svg>
                         </span>
-                        <span className="text-orange-300 font-medium text-xs">Coding problem</span>
+                        <span className="text-orange-300 font-medium text-xs">Algorithm</span>
                       </>
                     ) : category === 'system-design' ? (
                       <>
@@ -183,7 +183,7 @@ export default function NoteBrowser({ notes, initialCategory = 'all', initialTag
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m12 3 9 5-9 5-9-5 9-5Z M3 12l9 5 9-5 M3 16l9 5 9-5" />
                           </svg>
                         </span>
-                        <span className="text-sky-400 font-medium text-xs">Low Level Systems</span>
+                        <span className="text-sky-400 font-medium text-xs">Low-level systems</span>
                       </>
                     )}
                   </div>

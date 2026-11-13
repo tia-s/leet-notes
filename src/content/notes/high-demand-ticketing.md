@@ -1,44 +1,43 @@
 ---
-title: "Flash Sale Ticketing System"
-summary: "Design a high-throughput ticketing system that prevents overselling under extreme concurrent demand."
+title: "How Can a Flash Sale Avoid Overselling?"
+summary: "A flash sale can handle a rush by separating traffic control, inventory reservations, and order processing."
 category: "system-design"
 tags: [Concurrency, Redis, Kafka, Relational Database, PostgreSQL, Idempotency, Backpressure]
 date: "2026-10-24T11:24:23Z"
 featured: true
 ---
 
-## Problem Statement
+## When demand exceeds supply
 
-Design a flash sale ticketing system to sell 50,000 tickets to 500,000 concurrent users.
+A *Flash Sale Ticketing System* has to sell 50,000 tickets to as many as 500,000 people at once. The service has to control the request surge, reserve inventory without selling the same ticket twice, and keep orders moving if payment or database services fall behind.
 
-## The Challenge
+## What the system needs to handle
 
-Handling 500,000 concurrent users competing for 50,000 seats creates a massive spike in traffic ($10\times$ demand over supply). This creates a write-heavy concurrency problem as standard relational database transactions will collapse under lock contention if hundreds of thousands of requests hit the same rows simultaneously.
+The demand is ten times greater than the available inventory. Requests that reach the inventory service must not oversell tickets, and retries must not create duplicate reservations or charges. Reservations also need to expire when checkout is abandoned.
 
 The system must:
 - prevent overselling
 - handle retries
-- handle reservation time-out
-- handle duplicate requests 
+- handle reservation timeouts
+- handle duplicate requests
 
-The platform must prioritize consistency over availability for inventory state. If multiple users are allowed to reserve the same seat or users are double-charged, trust in the business is immediately lost, which is why preventing ticket overselling is critical. This makes strict ACID (Atomicity, Consistency, Isolation, Durability) behaviour non-negotiable for final inventory decisions, guaranteeing that a finalized order cannot end up half-saved or corrupted.
+Inventory decisions need to prevent two buyers from claiming the same remaining ticket. Order and payment records also need transactional safeguards so a completed purchase is not left only partly recorded.
 
-To shield the primary database from catastrophic lock contention, we can split the workflow into three distinct phases:
+It helps to separate the workflow into three parts: filter excess traffic, reserve inventory, then process orders and payments.
 
-### Traffic Shedding & Rate Limiting
-We need to handle invalid requests through the **API Gateway** to ensure cross-cutting concerns such as authentication, SSL termination, request routing, and rate limiting, do not reach core application services. This prevents unnecessary resource exhaustion and reduces attack surfaces. In this way, we are able to drop excess traffic and filter out duplicate requests early.
+### Filtering traffic at the gateway
+The **API Gateway** handles authentication, TLS termination, routing, and rate limiting before requests reach application services. It can reject invalid or excess traffic early, reducing the load on the inventory service.
 
-### In-Memory Reservation & Stock Control
-Relational databases such as PostgreSQL and MySQL are disk-bound and limited by I/O speeds. If 500k users execute `UPDATE tickets SET status = 'RESERVED' WHERE status = 'AVAILABLE' LIMIT 1;` directly on an RDBMS, database row-level/table-level locks will cause connection pool exhaustion, CPU spikes, and cascading failures within seconds. The database would spend most of its CPU time managing lock queues instead of processing writes.
+### Reserving inventory
 
-On the other hand, **Redis** stores data in memory, offering read and write operations in single-digit milliseconds. It processes requests sequentially on an event loop, allowing custom Lua scripts to evaluate stock conditions and decrement inventory as an unbroken, atomic operation. This guarantees that race conditions are eliminated without heavy database locks, preventing overselling and duplicate reservations. 
+Sending every reservation request directly to the same inventory rows can create lock contention. Under a sharp traffic spike, waiting for those locks can exhaust database connections and slow other work.
 
-However, since a single Redis node means a single point of failure, a Redis Cluster with primary-replica nodes would ensure high availability and automatic failover. A clustered setup also allows keys to be sharded across nodes to distribute memory and network throughput load across the cluster. Redis also natively manages reservation timeouts using Key Expiration (TTL).
+**Redis** can handle short-lived inventory reservations in memory. A Lua script can check stock and update reservation state as one operation, avoiding a race between separate reads and writes. Redis expiration can also release a reservation after its time-to-live (TTL) ends.
 
-### Asynchronous Order Processing & Payment 
-If 50,000 users successfully claim a reservation within 3 seconds, downstream systems such as payment processors, invoice generators, and transactional email services, will crash if called synchronously. 
+Redis also needs a failure strategy. A Redis Cluster with replicas can provide failover, while sharding can spread keys across nodes. A single event's stock key can still become a hot spot, so clustering alone does not remove every throughput limit.
 
-Kafka acts as a shock absorber by queuing order payloads. Downstream worker services then pull and process these orders asynchronously at a controlled, sustainable rate. Kafka writes sequentially to an append-only log on disk, enabling it to process high-throughput event streams with durability. If a downstream service or payment gateway experiences a temporary outage, messages remain safely stored in Kafka to be reprocessed when the system recovers, ensuring reliable retries. By default, Kafka employs time-based retention to keep disk usage bounded.
+### Processing orders and payments asynchronously
+If many buyers reserve tickets at once, payment processors and other downstream services may not be able to handle all resulting work immediately. **Kafka** can buffer order events so worker services process them at a controlled rate. If a downstream service is temporarily unavailable, the events remain available for retry, subject to the topic's retention settings.
 
 ## Proposed Architecture
 
@@ -67,12 +66,12 @@ Kafka acts as a shock absorber by queuing order payloads. Downstream worker serv
 [8. PostgreSQL / MySQL DB] ◄────────────────┘
 ```
 
-### Step 1: API Gateway
+### The API gateway
 1. **User Request:** A user clicks "Buy Ticket", generating a request containing their `user_id`, `event_id`, and a client-generated `uuid`.
 2. **Edge Filtering:** The _API Gateway_ handles initial edge checks (SSL termination, JWT authentication, and DDoS protection). 
 3. **Traffic Shedding:** Using token bucket rate-limiting algorithms, excess traffic (spammed requests or bot spikes) is dropped immediately with `429 Too Many Requests` or `410 Sold Out` responses before reaching core backend services.
 
-### Step 2: Flash Sale Service & Redis Cluster
+### The reservation service and Redis
 1. **Lua Execution:** Valid requests are forwarded to the _Flash Sale Service_, which passes request parameters (`user_id`, `event_id`, `ttl=600`) into an atomic Lua script executed on the _Redis Cluster_.
 2. **Single Atomic Operation:** The Lua script evaluates the following directly inside _Redis_ memory:
    * **Deduplication Check:** Checks if a reservation key for this user already exists (`EXISTS event:<id>:user:<id>`). If it exists, the script aborts and returns a duplicate status code immediately without touching inventory.
@@ -82,15 +81,15 @@ Kafka acts as a shock absorber by queuing order payloads. Downstream worker serv
    * **Sold Out (`-1`):** Returns `410 Sold Out`.
    * **Duplicate (`-2`):** Returns `409 Conflict` (or returns the cached reservation status).
 
-### Step 3: Kafka
+### Kafka and order events
 1. **Event Publishing:** Upon a successful _Redis_ reservation, the _Flash Sale Service_ publishes an `OrderCreated` event to an _Apache Kafka_ topic.
 2. **Shock Absorption:** Kafka safely buffers the high-volume event stream to disk in sequential, append-only logs, decoupling the instant reservation spike from slower downstream payment and database operations.
 
-### Step 4: Downstream Services
+### Payment and order workers
 1. **Controlled Consumption:** The Order Service (acting as a Kafka consumer) pulls order events from Kafka topics at a sustainable, controlled processing rate.
 2. **Payment Processing:** The user is directed to complete checkout. The Order Service communicates with external _Payment Gateways_.
 
-### Step 5: Relational Database
+### Persisting the order
 1. **ACID Persistence:** Once payment clears, the transaction is written to PostgreSQL (acting as the primary _Relational Database_), setting the order status to `CONFIRMED` with strict ACID guarantees.
 2. **Handling Timeouts / Cancellations:**
    * **If Payment Succeeds:** The _Redis_ reservation key is updated to `PAID` or removed.
@@ -122,7 +121,7 @@ Kafka acts as a shock absorber by queuing order payloads. Downstream worker serv
 ### Clarifying Questions
 
 1. If a user's payment fails or times out, do tickets go back into the global pool immediately, or are they released in batches?
-2. Should access be first-come, first-served, or should we use a virtual waiting room/queue system?
+2. Should access be first-come, first-served, or managed through a virtual waiting room?
 3. What is the maximum number of tickets a single user can purchase in one transaction?
 
 ## 2. Problem Statement & Core Technical Challenges
@@ -262,11 +261,11 @@ CREATE INDEX idx_orders_user_id ON orders(user_id);
 
 ### Open Questions
 
-* How do we handle refunds or cancellations post-purchase? Do we feed these back into a rolling inventory pool, or batch them for a secondary "second-chance" flash sale?
+* How should refunds or cancellations affect inventory? Should released tickets return to the pool immediately or be offered in a later sale?
 ````
 
 ## Summary
 
-This design modernizes the ticketing platform to safely handle extreme flash sale concurrency (500,000 QPS) without compromising data integrity. By migrating inventory management from synchronous PostgreSQL locks to atomic Redis Lua scripts, and decoupling downstream order processing via Kafka, the system eliminates database contention and guarantees zero oversold tickets. 
+The design separates a flash sale into three steps: filter excess requests at the gateway, reserve inventory, and process order events asynchronously. Redis handles short-lived reservation state, while Kafka gives downstream services room to process work at their own pace. The relational database remains responsible for durable order records.
 
-The resulting design is highly available, strictly consistent at the inventory layer, and ensures a stable user experience during peak demand.
+The design still depends on three details: how inventory keys are distributed, how reservation expiry works, and whether the system can handle the expected traffic.

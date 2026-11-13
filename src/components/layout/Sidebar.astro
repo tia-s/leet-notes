@@ -21,7 +21,7 @@ const navItems = [
     active: currentPath === '/' 
   },
   { 
-    label: 'Coding problems', 
+    label: 'Algorithms', 
     href: '/category/algorithm', 
     count: String(algoCount).padStart(2, '0'),
     active: currentPath === '/category/algorithm' 
@@ -33,7 +33,7 @@ const navItems = [
     active: currentPath === '/category/system-design' 
   },
   {
-    label: 'Low Level Systems',
+    label: 'Low-level systems',
     href: '/category/low-level-systems',
     count: String(lowLevelCount).padStart(2, '0'),
     active: currentPath === '/category/low-level-systems',
@@ -47,12 +47,11 @@ const navItems = [
       <span class="text-xl font-bold tracking-tight text-zinc-100 group-hover:text-emerald-400 transition-colors">
         leetnotes<span class="text-emerald-400">.</span>
       </span>
-      <p class="text-xs text-zinc-400 mt-1">A little more understanding, every day.</p>
     </a>
 
     <nav class="space-y-1">
       <span class="text-[10px] font-mono uppercase tracking-widest text-zinc-400 block px-3 pb-2">
-        The Journal
+        Browse
       </span>
       {navItems.map((item) => (
         <a
@@ -72,7 +71,7 @@ const navItems = [
     {topics.length > 0 && (
       <div class="space-y-2">
         <span class="text-[10px] font-mono uppercase tracking-widest text-zinc-400 block px-3">
-          Explore Topics
+          Topics
         </span>
         <ul class="space-y-1">
           {topics.map((topic) => (
@@ -92,16 +91,12 @@ const navItems = [
   </div>
 
   <div class="p-6 border-t border-zinc-900 space-y-4">
-    <div class="flex items-center gap-2">
-      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-      <span class="text-[11px] font-mono text-zinc-400">Always a work in progress</span>
-    </div>
     <div class="flex items-center gap-3">
       <div class="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center font-mono text-xs text-zinc-300">
         TS
       </div>
       <div class="overflow-hidden">
-        <p class="text-[10px] text-zinc-400 truncate">Think. Reason. Learn. Refine.</p>
+        <p class="text-[10px] text-zinc-400 truncate">Software Engineer</p>
       </div>
     </div>
   </div>

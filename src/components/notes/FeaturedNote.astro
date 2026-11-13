@@ -14,7 +14,7 @@ const { title, summary } = note.data;
   <div class="lg:col-span-7 p-8 flex flex-col justify-between space-y-8">
     <div class="space-y-4">
       <span class="text-[10px] font-mono uppercase tracking-widest text-emerald-400 block">
-        From the Notebook
+        Featured note
       </span>
       <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-100">
         {title}
@@ -29,7 +29,7 @@ const { title, summary } = note.data;
         href={`/notes/${note.id}`}
         class="inline-flex items-center gap-2 text-emerald-400 hover:text-emerald-300 font-medium transition-colors group"
       >
-        <span>See my thought process</span>
+        <span>Read note</span>
         <svg class="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
         </svg>

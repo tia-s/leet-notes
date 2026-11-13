@@ -1,17 +1,17 @@
 ---
-title: "Single Number"
-summary: "Finding the single unique element in an array where every other element appears twice."
+title: "Why Does XOR Cancel Out Pairs?"
+summary: "XOR combines values so that pairs disappear and an unmatched value remains."
 category: "algorithm"
 tags: ["Bit Manipulation"]
 date: "2026-10-12T12:00:00Z"
 featured: false
 ---
 
-## LeetCode 136: Single Number
+## When pairs cancel out
 
-Given a non-empty array of integers `nums`, every element appears twice except for one. Find that single one.
+In *Single Number*, one value appears once and every other value appears twice. XOR has a useful property here: `x ^ x` equals `0`, so each pair cancels out and the unpaired value remains.
 
-You must implement a solution with a linear runtime complexity and use only constant extra space.
+The problem asks for linear time and constant extra space.
 
 ### Examples
 * **Example 1:**
@@ -29,12 +29,12 @@ You must implement a solution with a linear runtime complexity and use only cons
 * `-3 * 10^4 <= nums[i] <= 3 * 10^4`
 * Each element in the array appears twice except for one element which appears only once.
 
---- 
+---
 
-We could compare every number with every other number to count occurrences. The space complexity remains $O(1)$ because we only allocate a single variable to store the count during our checks, which requires the same amount of memory regardless of how large the input array gets. However, comparing every number would lead to an $O(n^2)$ time complexity. Because we iterate through all $n$ elements and scan the entire array of $n$ elements for each one, it results in $n \times n$ operations, breaking the linear constraint.
+Counting each value by comparing it with every other value takes $O(N^2)$ time. It uses only a fixed amount of extra space, but scanning the whole array for every element repeats a lot of work.
 
 
-### Potential Solution 1: Brute Force - $O(n^2)$ time; $O(1)$ space
+### Counting every occurrence
 
 ```lua
 Function SingleNumber(nums):
@@ -56,13 +56,11 @@ def singleNumber(nums: list[int]) -> int:
             return num
 ```
 
-Using only constant extra space without implies storing a tracking variable and somehow keeping track of the solution, even when the duplicate numbers are scattered.
+This keeps extra space constant, but it does not meet the time requirement. Sorting brings equal values next to each other, making it possible to find the unpaired value in one pass.
 
-This makes me think of sorting the array first, then looping through with a pointer to check if the current number is different from the adjacent number.
+### Sorting and checking adjacent values
 
-### Potential Solution 2: Sorting & Pointer Check - $O(n \log n)$ time; $O(1)$ space
-
-While this approach feels linear because we only loop through the array once ($O(n)$), the initial sorting step takes $O(n \log n)$ time. Therefore, the overall time complexity is $O(n \log n)$, which is better than the previous solution but also doesn't meet the linear $O(n)$ constraint.
+After sorting, a single pass can check adjacent pairs. The pass is $O(N)$, but sorting takes $O(N \log N)$, so the overall method is not linear.
 
 ```lua
 Function SingleNumber(nums):
@@ -90,11 +88,7 @@ def singleNumber(nums: list[int]) -> int:
     return nums[-1]
 ```
 
-This avoids taking up any extra space, but the sorting adds time complexity overhead.
-
-Thinking of a way to solve this in strict linear time without sorting, we could use a data structure to keep track of the counts (most likely a hash map).
-
-### Potential Solution 3: Tracking counts in a Hash Map - $O(n)$ time; $O(n)$ space
+### Tracking counts in a hash map
 
 ```lua
 Function SingleNumber(nums):
@@ -125,43 +119,35 @@ def singleNumber(nums: list[int]) -> int:
             return num
 ```
 
-This works and hits our $O(n)$ time target, but it breaks the constraint for $O(1)$ space since the hash map scales with the input size.
+The hash map reduces the time to $O(N)$, but its storage grows with the number of distinct values, so it uses $O(N)$ extra space.
 
-If we go back to the idea of storing it in a tracking variable, we know we'd need a way to update that singular variable in $O(1)$ time to avoid adding additional time complexity. If we're able to do that, we could loop through, add to the variable, and remove/pop from that variable without extra space. This way, we'd be able to add as we go through the list and remove if we've already added it.
+To stay within constant space, the running state needs a fixed size. One possible approach is to represent each number by its sign and decimal digits, then toggle a flag for each digit position as values appear.
 
-Therefore, another important consideration is that we would also need a way to check if we've already added it to the variable.
+### Toggling decimal digits
 
-### Potential Solution 4: Place-value toggling - $O(n)$ time; $O(1)$ space
+Under the stated value limits, each number has at most five decimal digits. Toggling its sign and each digit at its place value takes at most five steps per number, for $O(N)$ time. The set of possible place-and-digit pairs is fixed, so the storage remains $O(1)$ as the array grows.
 
-If we write this out, one way we can keep track of numbers without storing them directly is to consider their place values. 
-
-We iterate through the $n$ elements, and for each number, we perform a while-loop proportional to its number of digits. Based on the constraints, the maximum value is $3 \times 10^4$ (5 digits). This means we perform at most $5$ operations per number, yielding $5n$ operations, which simplifies to $O(n)$ time. 
-
-For memory, we store active digits in a dictionary. Since numbers are capped at 5 digits, there are at most 5 place-values $\times$ 10 possible digits = 50 maximum keys in the dictionary, plus 1 sign toggle. This dictionary caps at 51 items regardless of how massive $n$ gets, meaning it doesn't scale with the input array, which simplifies to $O(1)$ space.
-
-As a simplified example of how the logic works, say we have a sign toggle and only up to two-digit numbers. We will italicize the flags that are currently toggled "on". 
-
-Let's look at the array `[53, -24, 53]`. First, we loop through and see 53. The sign remains positive, and we toggle the 5 for the tens and 3 for the ones:
+For `[53, -24, 53]`, the first value, `53`, turns on the tens and ones flags for `5` and `3`:
 
 - **Sign toggle:** +
 - **Tens position flags:** 0 1 2 3 4 *5* 6 7 8 9
 - **Ones position flags:** 0 1 2 *3* 4 5 6 7 8 9
 
-Now we reach -24. The negative value means we toggle the sign to negative. We also toggle the 2 for tens and 4 for ones:
+For `-24`, toggle the sign and the digits in the tens and ones positions:
 
 - **Sign toggle:** *-*
 - **Tens position flags:** 0 1 *2* 3 4 *5* 6 7 8 9
 - **Ones position flags:** 0 1 2 *3* *4* 5 6 7 8 9
 
-When we see 53 again, we toggle the 5 and 3 back off. Since it's a positive number, it doesn't flip the sign toggle, leaving it as negative:
+When `53` appears again, its digit flags turn off. Its positive sign leaves the sign flag unchanged:
 
 - **Sign toggle:** *-*
 - **Tens position flags:** 0 1 *2* 3 4 5 6 7 8 9
 - **Ones position flags:** 0 1 2 3 *4* 5 6 7 8 9
 
-Now the only flags left "on" are the negative sign, 2 tens, and 4 ones (aka -24).
+The remaining flags represent the negative sign, 2 tens, and 4 ones: `-24`.
 
-This works because we treat seeing the number like flipping a switch. This allows us to keep track of what we've already seen without sorting or storing numbers in a dynamically-sized data structure.
+This method cancels duplicate numbers without storing each number. It works under the stated range of values, but the decimal bookkeeping is more involved than a bitwise operation.
 
 ```lua
 Function SingleNumber(nums):
@@ -228,23 +214,23 @@ def singleNumber(nums: list[int]) -> int:
     return -result if sign_toggle else result
 ```
 
-This conceptual framework reveals a much easier and more efficient approach. Considering we need to track only two states (seen once vs. seen twice), we can apply this place-value toggling idea directly to binary. Computers process data in binary natively, so we can simply use bitwise operations to maintain our running answer efficiently.
+The same cancellation idea is simpler in binary. XOR toggles each bit, so a number combined with itself cancels out.
 
-### Best Solution: Bit manipulation (XOR) - $O(n)$ time; $O(1)$ space
+### Applying the same idea with XOR
 
-We could keep a running variable that contains which bits are on or off in each binary place. We use the XOR (^) operator to compare each number with this running variable.
+XOR has two useful properties: `x ^ x` is `0`, and `x ^ 0` is `x`. Combining every value into one running result cancels each pair and leaves the unpaired value.
 
-For example: 
+For example:
 * Start at `000` 
 * Sees `5` $\rightarrow$ now it's `101` 
 * Sees `6` $\rightarrow$ now it's `110 ^ 101` = `011` 
 * Sees `6` again $\rightarrow$ now it's `110 ^ 011` = `101`
 
-This tells us only `5` appeared once because `6` cancelled itself out. 
+The result is `5`; the two occurrences of `6` cancel each other.
 
-XOR only shows on if the digits differ, so we can apply this to every digit independently (although this is done at the same time in the actual hardware) to flip each bit as needed. Every duplicated number will flip it back to `000` (or however many places) leaving the one non-duplicated one exposed. 
+XOR applies this cancellation to every bit. Each duplicated value restores the running result to what it was before that pair was added, leaving the value that has no pair.
 
-This also makes the constraints within which this solution will actually work very clear. The size of the list will always be odd since only one number isn't duplicated. The lone number must appear an odd number of times, and every other number has to appear an even number of times.
+This works whenever exactly one value appears an odd number of times and all others appear an even number of times. The stated problem is a special case: one value appears once, and every other value appears twice.
 
 ```lua
 Function SingleNumber(nums):
@@ -264,29 +250,22 @@ def singleNumber(nums: list[int]) -> int:
     return result
 ```
 
-There is also a mathematical way to solve this that becomes obvious once we note those constraints. It requires finding the distinct numbers, doubling their sum, and subtracting the sum of the entire list.
+There is another linear-time method: double the sum of the distinct values, then subtract the sum of the whole array. It uses a set, so its extra space grows with the input.
 
-### Potential Solution 5: The Math Way - $O(n)$ time; $O(n)$ space
+### Using the sum of distinct values
 
 $$2 \times (\text{sum of the distinct numbers}) - (\text{sum of everything})$$
 
-If the array is [4, 1, 2, 1, 2], the unique numbers are [4, 1, 2].
+For `[4, 1, 2, 1, 2]`, the distinct values are `[4, 1, 2]`:
 
 $2 \times (4 + 1 + 2) = 14$
 
 The sum of the original array is $4 + 1 + 2 + 1 + 2 = 10$.
 $14 - 10 = 4$.
 
-Creating a `set()` from the array requires iterating through all $n$ elements and allocating new memory to store the unique numbers, taking $O(n)$ time and $O(n)$ space. The `sum()` function also iterates through the elements, taking $O(n)$ time, but it only maintains a running total, using $O(1)$ space. Combined, the operations scale linearly for an overall $O(n)$ time complexity. 
+Building the set and calculating the sums take $O(N)$ time overall. The set requires $O(N)$ extra space.
 
-However, the memory allocated for the set violates the constant space constraint, resulting in an overall $O(n)$ space complexity.
-
-$$2 \times (\text{sum of the distinct numbers}) - (\text{sum of everything})$$
-
-If the array is `[4, 1, 2, 1, 2]`, the unique numbers are `[4, 1, 2]`. 
-$2 \times (4 + 1 + 2) = 14$
-The sum of the original array is $4 + 1 + 2 + 1 + 2 = 10$.
-$14 - 10 = 4$.
+This method does not meet the constant-space requirement.
 
 ```lua
 Function SingleNumber(nums):
@@ -302,13 +281,13 @@ def singleNumber(nums: list[int]) -> int:
     return 2 * sum(set(nums)) - sum(nums)
 ```
 
-Ultimately, the bit manipulation (XOR) solution is the only one that satisfies both the $O(1)$ space and $O(n)$ time constraints while remaining perfectly robust against edge cases. It is perfectly robust for this specific problem, but its logic strictly depends on the input constraints: XOR cancellation only isolates the target if exactly one element occurs an odd number of times and every other element occurs an even number of times.
+XOR meets both the linear-time and constant-space requirements. Its result depends on the frequency pattern: it isolates one value only when that value appears an odd number of times and all other values appear an even number of times.
 
-| Strategy | Time complexity | Extra space complexity | Status |
-|:---|:---|:---|:---|
-| Brute force counting | $O(N^2)$ | $O(1)$ | Too slow |
-| Sorting and adjacent-pair check | $O(N \log N)$ | $O(1)$ | Finds the answer, but misses the linear-time requirement |
-| Hash map of counts | $O(N)$ | $O(N)$ | Works, but uses extra space |
-| Place-value toggling | $O(N)$ | $O(1)$ | Works under the stated number and frequency constraints |
-| **Bit manipulation (XOR)** | **$O(N)$** | **$O(1)$** | **Meets both constraints** |
-| Set-and-sum math | $O(N)$ | $O(N)$ | Works, but uses extra space |
+| Approach | Time complexity | Extra space |
+|:---|:---|:---|
+| Count each value by scanning | $O(N^2)$ | $O(1)$ |
+| Sort and check adjacent pairs | $O(N \log N)$ | $O(1)$ |
+| Count values in a hash map | $O(N)$ | $O(N)$ |
+| Toggle decimal place values | $O(N)$ | $O(1)$ |
+| **XOR** | **$O(N)$** | **$O(1)$** |
+| Sum distinct values | $O(N)$ | $O(N)$ |

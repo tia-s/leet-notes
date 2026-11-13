@@ -1,38 +1,28 @@
 ---
-title: "Longest Substring Without Repeating Characters"
-summary: "Find the length of the longest substring that contains no repeated characters."
+title: "How Can a Sliding Window Handle Repeated Characters?"
+summary: "A sliding window can keep a substring free of repeats as it moves through a string."
 category: "algorithm"
 tags: ["Sliding Window"]
 date: "2026-10-25T12:00:00Z"
 featured: true
 ---
 
-## LeetCode 3: Longest Substring Without Repeating Characters
+## Keeping a window free of repeats
 
-Given a string `s`, find the length of the longest substring without repeating characters.
+*Longest Substring Without Repeating Characters* asks for the longest contiguous range of characters with no repeats. A sliding window fits naturally: extend the right edge while the range stays valid, then move the left edge when a repeated character appears.
 
-### Examples
+### Example strings
 * **Example 1:** `s = "abcabcbb"` → output: `3` (`"abc"`)
 * **Example 2:** `s = "bbbbb"` → output: `1` (`"b"`)
 * **Example 3:** `s = "pwwkew"` → output: `3` (`"wke"`)
 
-### Constraints
-* $0 \leq \text{s.length} \leq 5 \times 10^4$
-* Target time complexity: $O(N)$.
-* Target extra space complexity: $O(\min(N, M))$, where $M$ is the size of the character set.
+The problem allows an empty string and calls for $O(N)$ time with $O(\min(N, M))$ extra space, where $M$ is the size of the character set.
 
----
+A **substring** is contiguous, so `"wke"` is a substring of `"pwwkew"`. A **subsequence** can skip characters while keeping their order; `"pwke"` is a subsequence, but not a substring.
 
-Before choosing an approach, it helps to distinguish a **substring** from a **subsequence**:
+### Checking every possible range
 
-* A **substring** must be contiguous. In `"pwwkew"`, `"wke"` is a valid substring.
-* A **subsequence** can skip characters while maintaining their relative order. In `"pwwkew"`, `"pwke"` is a subsequence, but not a substring.
-
-Since the problem asks for a substring, every window must consist of contiguous indices, such as `s[left:right + 1]`.
-
-### Potential Solution 1: Brute force - $O(n^2)$ or $O(n^3)$ time
-
-My first instinct is to pick a starting character and expand to the right until I encounter a repeated character, then repeat from the next starting index:
+Start at each index and extend the range until a character repeats:
 
 ```
 Start at index 0 ('a'): "abc" -> duplicate 'a' hit
@@ -41,22 +31,22 @@ Start at index 2 ('c'): "cab" -> duplicate 'c' hit
 ...
 ```
 
-Checking every possible start and end position requires a nested loop, resulting in $O(N^2)$ pairs. If each candidate substring is also scanned to check for duplicates, the total time can reach $O(N^3)$. The inner loop restarts for every starting index and rechecks overlapping work.
+Checking every possible start and end position requires $O(N^2)$ pairs. Scanning each candidate range for duplicates can raise the total work to $O(N^3)$. Either way, overlapping ranges are checked repeatedly.
 
-I quickly realized there's no need to create or store the full substring. Creating slices can require $O(N)$ extra space and time. Since we only need the length, we can keep a scalar such as `max_length = max(max_length, right - left + 1)` and use a set or map to track characters.
+There is no need to create or store each substring. The current length is `right - left + 1`, and a set or map can track which characters are in the window.
 
-### Best pattern: Sliding window
+### Expanding and shrinking the window
 
-The sliding-window pattern fits because we need to find the maximum length of a contiguous range that satisfies a condition: all its characters are unique.
+The window represents a contiguous range whose characters are all unique:
 
 1. Start `left` and `right` at index 0.
 2. Move `right` forward one character at a time, adding each character to a lookup collection for the current window.
 3. When a duplicate appears, shrink the window from the left until that duplicate is removed.
 4. After each valid window, update `max_length`.
 
-### Potential Solution 2: HashSet sliding window - $O(n)$ time; $O(\min(n, m))$ space
+### Moving the left edge one step at a time
 
-This solution moves `left` step by step in a `while` loop. Each character is visited at most twice: once by `right` and once by `left`.
+The set-based version advances `left` until the repeated character has left the window. Each character enters and leaves the set at most once.
 
 ```python
 def lengthOfLongestSubstring_set(s: str) -> int:
@@ -77,7 +67,7 @@ def lengthOfLongestSubstring_set(s: str) -> int:
     return max_length
 ```
 
-### Trace walkthrough: `s = "pwwkew"`
+### Following the window through `"pwwkew"`
 
 ```
 Index:    0    1    2    3    4    5
@@ -91,11 +81,11 @@ Char:    'p'  'w'  'w'  'k'  'e'  'w'
 * **`left = 2, right = 4` (`'e'`):** Window = `['w', 'k', 'e']`, set = `{'w', 'k', 'e'}`, `max_length = 3`.
 * **`left = 2, right = 5` (`'w'`):** A duplicate `'w'` is found. Shrink `left` past the previous `'w'` to index 3. The window is `['k', 'e', 'w']` and `max_length = 3`.
 
-### Best Solution: HashMap last-seen index jump - $O(n)$ time; $O(\min(n, m))$ space
+### Jumping past the previous occurrence
 
-Instead of moving `left` one step at a time, store each character's last seen index in a map. When a duplicate appears, jump `left` directly past its previous occurrence.
+The map-based version stores each character's most recent index. When a repeat appears, `left` can jump directly past the previous occurrence instead of moving one position at a time.
 
-For example, with `s = "abba"`, the last-seen index of `'b'` may be before the current window's `left` boundary when `'b'` appears again. Use `left = max(left, char_map[current_char] + 1)` so that `left` never moves backward.
+For `"abba"`, the second `'a'` refers to an occurrence before the current window. Using `left = max(left, char_map[current_char] + 1)` keeps `left` from moving backward.
 
 ```python
 def lengthOfLongestSubstring_map(s: str) -> int:
@@ -116,8 +106,8 @@ def lengthOfLongestSubstring_map(s: str) -> int:
     return max_length
 ```
 
-| Strategy | Time complexity | Extra space complexity | Status |
-|:---|:---|:---|:---|
-| Brute force (all substrings) | $O(N^2)$ to $O(N^3)$ | Up to $O(N)$ | Too slow |
-| HashSet sliding window | $O(N)$ | $O(\min(N, M))$ | Linear; each pointer advances at most $N$ times |
-| **HashMap last-seen index jump** | **$O(N)$** | **$O(\min(N, M))$** | **Linear; jumps `left` directly past duplicates** |
+| Approach | Time complexity | Extra space |
+|:---|:---|:---|
+| Check every range | $O(N^2)$ to $O(N^3)$ | Up to $O(N)$ |
+| Set-based sliding window | $O(N)$ | $O(\min(N, M))$ |
+| **Map with last-seen indices** | **$O(N)$** | **$O(\min(N, M))$** |
